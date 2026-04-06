@@ -1,120 +1,90 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { useState, useEffect } from 'react'
 import './App.css'
+import NotificationPanel from './components/NotificationPanel'
+import AnalysisPage from './components/AnalysisPage'
+import Dashboard from './components/Dashboard'
+
+export interface Attack {
+  id: string
+  timestamp: number
+  endpoint: string
+  method: string
+  requestsPerSecond: number
+  sourceIPs: number
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  status: 'detected' | 'mitigated' | 'active'
+}
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'analysis'>('dashboard')
+  const [attacks, setAttacks] = useState<Attack[]>([])
+  const [notifications, setNotifications] = useState<string[]>([])
+
+  useEffect(() => {
+    const mockAttacks: Attack[] = [
+      {
+        id: 'ATK001',
+        timestamp: Date.now() - 300000,
+        endpoint: '/api/users',
+        method: 'GET',
+        requestsPerSecond: 5000,
+        sourceIPs: 342,
+        severity: 'critical',
+        status: 'mitigated'
+      },
+      {
+        id: 'ATK002',
+        timestamp: Date.now() - 60000,
+        endpoint: '/api/auth/login',
+        method: 'POST',
+        requestsPerSecond: 2300,
+        sourceIPs: 156,
+        severity: 'high',
+        status: 'active'
+      },
+      {
+        id: 'ATK003',
+        timestamp: Date.now() - 10000, 
+        endpoint: '/api/products',
+        method: 'GET',
+        requestsPerSecond: 890,
+        sourceIPs: 87,
+        severity: 'medium',
+        status: 'detected'
+      }
+    ]
+    setAttacks(mockAttacks)
+    setNotifications([
+      'Critical DDoS Attack Detected on /api/users - 5000 req/s',
+      'High Severity Attack on /api/auth/login - ACTIVE'
+    ])
+  }, [])
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app-container">
+      <header className="app-header">
+        <h1>🛡️ DDoS Attack Detection System</h1>
+        <nav className="nav-buttons">
+          <button 
+            className={`nav-btn ${currentPage === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setCurrentPage('dashboard')}
+          >
+            Dashboard
+          </button>
+          <button 
+            className={`nav-btn ${currentPage === 'analysis' ? 'active' : ''}`}
+            onClick={() => setCurrentPage('analysis')}
+          >
+            Analysis
+          </button>
+        </nav>
+      </header>
 
-      <div className="ticks"></div>
+      <NotificationPanel notifications={notifications} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      {currentPage === 'dashboard' && <Dashboard attacks={attacks} />}
+      {currentPage === 'analysis' && <AnalysisPage attacks={attacks} />}
+    </div>
   )
 }
 
