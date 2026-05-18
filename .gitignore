@@ -1,0 +1,6 @@
+backend/__pycache__
+backend/config/__pycache__
+backend/core/__pycache__
+backend/core/dto/__pycache__
+backend/core/services/__pycache__
+.env
