@@ -13,7 +13,7 @@ from sklearn.metrics import (
 )
 import joblib
 
-from preprocessing import DATASET_PATH
+from .preprocessing import DATASET_PATH 
 
 class SVMModel:
     def __init__(self):
@@ -21,11 +21,12 @@ class SVMModel:
         self.label_encoder = LabelEncoder()
         self.preprocess_data_info = None
 
-    def load_data(self):
-        if "parquet" in DATASET_PATH:
-            df = pd.read_parquet(DATASET_PATH)
+    def load_data(self, dataset_path=DATASET_PATH):
+        if "parquet" in dataset_path:
+            df = pd.read_parquet(dataset_path)
         else:
-            df = pd.read_csv(DATASET_PATH)
+            df = pd.read_csv(dataset_path)
+
         return df
     
     def load_data_info(self, info_path):
@@ -63,8 +64,8 @@ class SVMModel:
 
         return X, y
 
-    def test_model(self):
-        df = self.load_data()
+    def test_model(self, dataset_path=DATASET_PATH):
+        df = self.load_data(dataset_path)
         X_test, y_test = self.preprocess_data(df)
 
         if hasattr(self.model, "feature_names_in_"):

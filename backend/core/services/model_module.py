@@ -1,4 +1,10 @@
 import os 
+from .logistic_model import LogisticModel
+from .knn_model import KNNModel
+from .random_forest_model import RandomForestModel
+from .xgboost_model import XGBoostModel
+from .svm_model import SVMModel
+from pathlib import Path
 
 def get_list_of_models():
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -7,8 +13,40 @@ def get_list_of_models():
     if not os.path.exists(model_dir): return []
     models = os.listdir(model_dir)
     models = [model for model in models if ".joblib" in model]
+    models = [model for model in models if "preprocess_info" not in model]
     models = [model.split('.')[0] for model in models]
+    models = [model.split('_')[0] for model in models]
+    print(models)
     return list(set(models))
 
-def use_model(model_name: str):
+def use_model(model_name="logisticRegression"):
+
+    BASE_DIR = os.path.join(Path(__file__).resolve().parent, "../../../model/")
     
+    model = None
+    if model_name == "logisticRegression":
+        model = LogisticModel()
+    elif model_name == "knn":
+        model = KNNModel()
+    elif model_name == "randomForest":
+        model = RandomForestModel()
+    elif model_name == "xgboost":
+        model = XGBoostModel()
+    elif model_name == "svm":
+        model = SVMModel()
+    else:
+        raise ValueError(f"Model {model_name} not found. Please choose from {get_list_of_models()}")
+
+    model_path = os.path.join(BASE_DIR, f'{model_name}_model.joblib')
+    datainfo_path = os.path.join(BASE_DIR, f'{model_name}_preprocess_info.joblib')
+
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+    
+    if os.path.exists(datainfo_path) and model_name != "knn":
+        model.load_data_info(datainfo_path)
+
+
+    model.load_model(model_path)
+    model.test_model()
+

@@ -1,19 +1,22 @@
 import os
-import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report
 import joblib
 
-from preprocessing import DATASET_PATH
+from .preprocessing import DATASET_PATH
 
 class RandomForestModel:
     def __init__(self):
         self.model = None
         self.label_encoder = LabelEncoder()
 
-    def load_data(self):
-        df = pd.read_parquet(DATASET_PATH)
+    def load_data(self, dataset_path=DATASET_PATH):
+        if "parquet" in dataset_path:
+            df = pd.read_parquet(dataset_path)
+        else:
+            df = pd.read_csv(dataset_path)
+
         return df
     
     def load_model(self, model_path):
@@ -34,8 +37,8 @@ class RandomForestModel:
 
         return X, y
 
-    def test_model(self):
-        df = self.load_data()
+    def test_model(self, dataset_path=DATASET_PATH):
+        df = self.load_data(dataset_path)
         X_test, y_test = self.preprocess_data(df)
 
         y_pred = self.model.predict(X_test)

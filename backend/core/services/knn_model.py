@@ -6,18 +6,18 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import classification_report
 import joblib
 
-from preprocessing import DATASET_PATH
+from .preprocessing import DATASET_PATH
 
 class KNNModel:
     def __init__(self):
         self.model = None
         self.label_encoder = LabelEncoder()
 
-    def load_data(self):
-        if "parquet" in DATASET_PATH:
-            df = pd.read_parquet(DATASET_PATH)
+    def load_data(self, dataset_path=DATASET_PATH):
+        if "parquet" in dataset_path:
+            df = pd.read_parquet(dataset_path)
         else:
-            df = pd.read_csv(DATASET_PATH)
+            df = pd.read_csv(dataset_path)
         return df
     
     def load_model(self, model_path):
@@ -43,8 +43,8 @@ class KNNModel:
 
         return X_pca, y
 
-    def test_model(self):
-        df = self.load_data()
+    def test_model(self, dataset_path=DATASET_PATH):
+        df = self.load_data(dataset_path)
         X_test, y_test = self.preprocess_data(df)
 
         y_pred = self.model.predict(X_test)
