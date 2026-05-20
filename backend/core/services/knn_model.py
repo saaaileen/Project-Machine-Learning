@@ -12,6 +12,13 @@ class KNNModel:
     def __init__(self):
         self.model = None
         self.label_encoder = LabelEncoder()
+        self.preprocess_data_info = None
+
+    def load_data_info(self, info_path):
+        if os.path.exists(info_path):
+            self.preprocess_data_info = joblib.load(info_path)
+        else:
+            print(f"Preprocessing info file {info_path} not found. Please ensure it exists.")
 
     def load_data(self, dataset_path=DATASET_PATH):
         if "parquet" in dataset_path:
@@ -35,11 +42,22 @@ class KNNModel:
         X = df.drop(columns=["label"])
         y = df["label"]
 
-        scaler = RobustScaler()
-        X_scaled = scaler.fit_transform(X)
+        if self.preprocess_data_info:
+            zero_var_cols = self.preprocess_data_info["zero_var_cols"]
+            high_corr_cols = self.preprocess_data_info["high_corr_cols"]
+            feature_columns = self.preprocess_data_info["feature_columns"]
+            scaler = self.preprocess_data_info["scaler"]
+            pca = self.preprocess_data_info["pca"]
+        else:
+            print("Preprocessing info not found. Please load preprocessing info first.")
+            return None, None
         
-        pca = PCA(n_components=3, random_state=42, svd_solver='full')
-        X_pca = pca.fit_transform(X_scaled)
+        cols_to_drop = list(set(zero_var_cols + high_corr_cols))
+        X = df.drop(columns=cols_to_drop, errors="ignore")
+        X = X.reindex(columns=feature_columns, fill_value=np.nan)
+
+        X_scaled = scaler.transform(X)
+        X_pca = pca.transform(X_scaled)
 
         return X_pca, y
 

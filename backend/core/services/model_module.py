@@ -1,9 +1,9 @@
 import os 
-from .logistic_model import LogisticModel
-from .knn_model import KNNModel
-from .random_forest_model import RandomForestModel
-from .xgboost_model import XGBoostModel
-from .svm_model import SVMModel
+from logistic_model import LogisticModel
+# from knn_model import KNNModel
+# from random_forest_model import RandomForestModel
+# from xgboost_model import XGBoostModel
+# from svm_model import SVMModel
 from pathlib import Path
 
 def get_list_of_models():
@@ -43,10 +43,11 @@ def use_model(model_name="logisticRegression"):
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model file not found: {model_path}")
     
-    if os.path.exists(datainfo_path) and model_name != "knn":
+    if os.path.exists(datainfo_path):
         model.load_data_info(datainfo_path)
 
 
     model.load_model(model_path)
     model.test_model()
 
+use_model("logisticRegression")

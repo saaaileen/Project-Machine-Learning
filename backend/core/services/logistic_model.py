@@ -13,7 +13,7 @@ from sklearn.metrics import (
 )
 import joblib
 
-from .preprocessing import DATASET_PATH
+from preprocessing import DATASET_PATH
 
 class LogisticModel:
     def __init__(self):
@@ -46,12 +46,8 @@ class LogisticModel:
         if "activity" in df.columns:
             df = df.drop(columns=["activity"])
 
-        df["label"] = self.label_encoder.fit_transform(df["label"])
-
-
         # Separate features and target variable
-        X = df.drop(columns=["label"])
-        y = df["label"]
+        X = df
 
         if self.preprocess_data_info:
             zero_var_cols = self.preprocess_data_info["zero_var_cols"]
@@ -65,7 +61,7 @@ class LogisticModel:
         X = df.drop(columns=cols_to_drop, errors="ignore")
         X = X.reindex(columns=feature_columns, fill_value=np.nan)
 
-        return X, y
+        return X, None
 
     def test_model(self, dataset_path=DATASET_PATH):
         df = self.load_data(dataset_path)
@@ -73,8 +69,6 @@ class LogisticModel:
 
         y_pred = self.model.predict(X_test)
         print(f"Predicted labels: {y_pred}")
-        print(f"Actual labels: {y_test}")
-        print(classification_report(y_test, y_pred))
 
 
 
