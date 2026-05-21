@@ -1,32 +1,3 @@
-import sys
-print("Script is using:", sys.executable)
-"""
-flow_extractor.py
-=================
-Generates 300+ columns per network flow from live traffic or a pcap file.
-Matches the feature space of the BCCC-cPacket-Cloud-DDoS-2024 dataset.
-
-HOW IT WORKS — the column explosion explained:
-    Each "dimension" (fwd packets, bwd packets, IATs, header lengths, etc.)
-    gets the SAME set of statistical functions applied to it:
-        min, max, mean, std, variance, skewness, kurtosis, total, count, cv
-    
-    That alone gives you:
-        10 functions × 12+ dimensions = 120+ columns
-    
-    Then add: flag counts, bulk stats, subflow stats, active/idle times,
-    window sizes, rate features, SPLT sequences, ratios, L7 metadata.
-    
-    Grand total: ~310 columns.
-
-USAGE:
-    # Live capture (needs sudo/admin):
-    sudo python flow_extractor.py --interface eth0 --duration 120 --output flows.csv
-
-    # From a pcap file:
-    python flow_extractor.py --pcap capture.pcap --output flows.csv
-"""
-
 import argparse
 import numpy as np
 import pandas as pd
@@ -66,6 +37,8 @@ def _stats(arr):
         "skewness": float(skew(a)) if len(a) > 2 else 0.0,
         "kurtosis": float(sp_kurtosis(a)) if len(a) > 3 else 0.0,
         "cv":       std / mean if mean != 0 else 0.0,   # coefficient of variation
+        "median":   float(np.median(a)),
+        "mode":     float(pd.Series(a).mode()[0]) if len(a) > 0 else 0.0,
     }
 
 
@@ -103,26 +76,39 @@ class PacketLengthPlugin(NFPlugin):
         both = fwd + bwd
 
         # 10 stats × 3 directions = 30 cols
-        for prefix, arr in [
-            ("fwd_pkt_len",  fwd),
-            ("bwd_pkt_len",  bwd),
-            ("pkt_len",      both),
+        for p_out, arr in [
+            ("fwd_packets_delta_len",  fwd),
+            ("bwd_packets_delta_len",  bwd),
+            ("packets_delta_len",      both),
         ]:
-            for k, v in _stats(arr).items():
-                setattr(flow.udps, f"{prefix}_{k}", v)
+            s = _stats(arr)
+            for k, v in s.items():
+                if k in ["min", "max", "mean", "std", "variance", "skewness", "kurtosis", "median", "mode"]:
+                    setattr(flow.udps, f"{k}_{p_out}", v)
+                elif k == "cv":
+                    setattr(flow.udps, f"cov_{p_out}", v)
+                else:
+                    setattr(flow.udps, f"{p_out}_{k}", v)
 
         # 10 stats × 2 payload directions = 20 more cols
         for prefix, arr in [
-            ("fwd_payload_len", flow.udps._fwd_payload_lens),
-            ("bwd_payload_len", flow.udps._bwd_payload_lens),
+            ("fwd_payload_bytes", flow.udps._fwd_payload_lens),
+            ("bwd_payload_bytes", flow.udps._bwd_payload_lens),
+            ("payload_bytes", flow.udps._fwd_payload_lens + flow.udps._bwd_payload_lens),
         ]:
-            for k, v in _stats(arr).items():
-                setattr(flow.udps, f"{prefix}_{k}", v)
+            s = _stats(arr)
+            for k, v in s.items():
+                if k == "cv":
+                    setattr(flow.udps, f"{prefix}_cov", v)
+                else:
+                    setattr(flow.udps, f"{prefix}_{k}", v)
 
         # payload ratio (how much of each packet is actual data)
         total_bytes   = sum(both) or 1
         payload_bytes = sum(flow.udps._fwd_payload_lens + flow.udps._bwd_payload_lens)
-        flow.udps.payload_bytes_total = float(payload_bytes)
+        flow.udps.total_payload_bytes = float(payload_bytes)
+        flow.udps.fwd_total_payload_bytes = float(sum(flow.udps._fwd_payload_lens))
+        flow.udps.bwd_total_payload_bytes = float(sum(flow.udps._bwd_payload_lens))
         flow.udps.payload_ratio       = payload_bytes / total_bytes
 
 
@@ -157,13 +143,24 @@ class IATPlugin(NFPlugin):
         bwd_iats  = self._iats(flow.udps._bwd_ts)
 
         # 10 stats × 3 dimensions = 30 cols
-        for prefix, arr in [
-            ("flow_iat", flow_iats),
-            ("fwd_iat",  fwd_iats),
-            ("bwd_iat",  bwd_iats),
+        for prefix, prefix_delta, arr in [
+            ("packets_IAT", "packets_delta_time", flow_iats),
+            ("fwd_packets_IAT", "fwd_packets_delta_time", fwd_iats),
+            ("bwd_packets_IAT", "bwd_packets_delta_time", bwd_iats),
         ]:
-            for k, v in _stats(arr).items():
-                setattr(flow.udps, f"{prefix}_{k}", v)
+            s = _stats(arr)
+            for k, v in s.items():
+                if k == "cv":
+                    k = "cov"
+                if prefix == "packets_IAT" and k == "std":
+                    setattr(flow.udps, f"packet_IAT_std", v)
+                else:
+                    setattr(flow.udps, f"{prefix}_{k}", v)
+                    
+                if k in ["min", "max", "mean", "std", "variance", "skewness", "kurtosis", "median", "mode"]:
+                    setattr(flow.udps, f"{k}_{prefix_delta}", v)
+                elif k == "cov":
+                    setattr(flow.udps, f"cov_{prefix_delta}", v)
 
         # absolute total IAT per direction (used in rate calculations)
         flow.udps.fwd_iat_total = float(sum(fwd_iats))
@@ -215,10 +212,17 @@ class TCPFlagsPlugin(NFPlugin):
         for f in self.FLAGS:
             fwd_cnt = getattr(flow.udps, f"fwd_{f}_cnt")
             bwd_cnt = getattr(flow.udps, f"bwd_{f}_cnt")
-            # ratio of packets that had this flag set
-            setattr(flow.udps, f"fwd_{f}_ratio", fwd_cnt / max(flow.udps._fwd_flag_pkts, 1))
-            setattr(flow.udps, f"bwd_{f}_ratio", bwd_cnt / max(flow.udps._bwd_flag_pkts, 1))
-            setattr(flow.udps, f"total_{f}_cnt", fwd_cnt + bwd_cnt)
+            
+            setattr(flow.udps, f"{f}_flag_counts", fwd_cnt + bwd_cnt)
+            setattr(flow.udps, f"fwd_{f}_flag_counts", fwd_cnt)
+            setattr(flow.udps, f"bwd_{f}_flag_counts", bwd_cnt)
+            
+            setattr(flow.udps, f"{f}_flag_percentage_in_total", (fwd_cnt + bwd_cnt) / total_pkts)
+            setattr(flow.udps, f"fwd_{f}_flag_percentage_in_total", fwd_cnt / total_pkts)
+            setattr(flow.udps, f"bwd_{f}_flag_percentage_in_total", bwd_cnt / total_pkts)
+            
+            setattr(flow.udps, f"fwd_{f}_flag_percentage_in_fwd_packets", fwd_cnt / max(flow.udps._fwd_flag_pkts, 1))
+            setattr(flow.udps, f"bwd_{f}_flag_percentage_in_bwd_packets", bwd_cnt / max(flow.udps._bwd_flag_pkts, 1))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -280,14 +284,10 @@ class BulkPlugin(NFPlugin):
             byts = getattr(flow.udps, f"{d}_bulk_total_bytes")
             pkts = getattr(flow.udps, f"{d}_bulk_total_pkts")
             dur  = getattr(flow.udps, f"{d}_bulk_total_dur_ms")
-            setattr(flow.udps, f"{d}_bulk_avg_bytes",
-                    byts / cnt if cnt > 0 else 0.0)
-            setattr(flow.udps, f"{d}_bulk_avg_pkts",
-                    pkts / cnt if cnt > 0 else 0.0)
-            setattr(flow.udps, f"{d}_bulk_avg_dur",
-                    dur  / cnt if cnt > 0 else 0.0)
-            setattr(flow.udps, f"{d}_bulk_bytes_per_sec",
-                    byts / (dur / 1000) if dur > 0 else 0.0)
+            setattr(flow.udps, f"{d}_bulk_state_count", cnt)
+            setattr(flow.udps, f"{d}_bulk_total_size", byts)
+            setattr(flow.udps, f"avg_{d}_bytes_per_bulk", byts / max(cnt, 1))
+            setattr(flow.udps, f"avg_{d}_bulk_rate", byts / max(dur / 1000, 1))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -357,11 +357,8 @@ class SubflowPlugin(NFPlugin):
             p = np.array(plist) if plist else np.array([0.0])
             b = np.array(blist) if blist else np.array([0.0])
             dr = np.array(dlist) if dlist else np.array([0.0])
-            setattr(flow.udps, f"sf_{d}_avg_pkts",  float(p.mean()))
-            setattr(flow.udps, f"sf_{d}_avg_bytes", float(b.mean()))
-            setattr(flow.udps, f"sf_{d}_avg_dur",   float(dr.mean()))
-            setattr(flow.udps, f"sf_{d}_total_pkts",  float(p.sum()))
-            setattr(flow.udps, f"sf_{d}_total_bytes", float(b.sum()))
+            setattr(flow.udps, f"subflow_{d}_packets", float(p.sum()))
+            setattr(flow.udps, f"subflow_{d}_bytes", float(b.sum()))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -396,11 +393,17 @@ class ActiveIdlePlugin(NFPlugin):
 
         # 10 stats for active times
         for k, v in _stats(flow.udps._act_list).items():
-            setattr(flow.udps, f"active_{k}", v)
+            if k == "cv":
+                setattr(flow.udps, f"active_cov", v)
+            else:
+                setattr(flow.udps, f"active_{k}", v)
 
         # 10 stats for idle times
         for k, v in _stats(flow.udps._idle_list).items():
-            setattr(flow.udps, f"idle_{k}", v)
+            if k == "cv":
+                setattr(flow.udps, f"idle_cov", v)
+            else:
+                setattr(flow.udps, f"idle_{k}", v)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -425,15 +428,27 @@ class HeaderLengthPlugin(NFPlugin):
     def on_expire(self, flow):
         # 10 stats × 2 directions = 20 cols
         for prefix, arr in [
-            ("fwd_header_len", flow.udps._fwd_hdr_lens),
-            ("bwd_header_len", flow.udps._bwd_hdr_lens),
+            ("fwd", flow.udps._fwd_hdr_lens),
+            ("bwd", flow.udps._bwd_hdr_lens),
         ]:
-            for k, v in _stats(arr).items():
-                setattr(flow.udps, f"{prefix}_{k}", v)
+            s = _stats(arr)
+            for k, v in s.items():
+                if k in ["min", "max", "mean", "std", "variance", "skewness", "kurtosis", "median", "mode"]:
+                    setattr(flow.udps, f"{prefix}_{k}_header_bytes", v)
+                    setattr(flow.udps, f"{k}_{prefix}_header_bytes_delta_len", v)
+                elif k == "cv":
+                    setattr(flow.udps, f"{prefix}_cov_header_bytes", v)
+                    setattr(flow.udps, f"cov_{prefix}_header_bytes_delta_len", v)
 
-        # single summary values commonly used as standalone features
-        flow.udps.fwd_header_len_total = float(sum(flow.udps._fwd_hdr_lens))
-        flow.udps.bwd_header_len_total = float(sum(flow.udps._bwd_hdr_lens))
+        # overall stats
+        s_all = _stats(flow.udps._fwd_hdr_lens + flow.udps._bwd_hdr_lens)
+        for k, v in s_all.items():
+            if k in ["min", "max", "mean", "std", "variance", "skewness", "kurtosis", "median", "mode"]:
+                setattr(flow.udps, f"{k}_header_bytes", v)
+                setattr(flow.udps, f"{k}_header_bytes_delta_len", v)
+            elif k == "cv":
+                setattr(flow.udps, f"cov_header_bytes", v)
+                setattr(flow.udps, f"cov_header_bytes_delta_len", v)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -444,8 +459,8 @@ class WindowPlugin(NFPlugin):
     def on_init(self, packet, flow):
         flow.udps._fwd_wins  = []
         flow.udps._bwd_wins  = []
-        flow.udps.init_win_fwd = -1
-        flow.udps.init_win_bwd = -1
+        flow.udps.fwd_init_win_bytes = -1
+        flow.udps.bwd_init_win_bytes = -1
 
     def on_update(self, packet, flow):
         win = getattr(packet, "tcp_window", None)
@@ -453,12 +468,12 @@ class WindowPlugin(NFPlugin):
             return
         if packet.direction == 0:
             flow.udps._fwd_wins.append(win)
-            if flow.udps.init_win_fwd == -1:
-                flow.udps.init_win_fwd = win
+            if flow.udps.fwd_init_win_bytes == -1:
+                flow.udps.fwd_init_win_bytes = win
         else:
             flow.udps._bwd_wins.append(win)
-            if flow.udps.init_win_bwd == -1:
-                flow.udps.init_win_bwd = win
+            if flow.udps.bwd_init_win_bytes == -1:
+                flow.udps.bwd_init_win_bytes = win
 
     def on_expire(self, flow):
         for prefix, arr in [
@@ -500,27 +515,27 @@ class FlowRatePlugin(NFPlugin):
         fp = flow.udps._fwd_pkts
         bp = flow.udps._bwd_pkts
 
-        flow.udps.flow_bytes_per_s     = (fb + bb) / dur_s
-        flow.udps.flow_pkts_per_s      = (fp + bp) / dur_s
-        flow.udps.fwd_bytes_per_s      = fb / dur_s
-        flow.udps.bwd_bytes_per_s      = bb / dur_s
-        flow.udps.fwd_pkts_per_s       = fp / dur_s
-        flow.udps.bwd_pkts_per_s       = bp / dur_s
+        flow.udps.bytes_rate     = (fb + bb) / dur_s
+        flow.udps.packets_rate      = (fp + bp) / dur_s
+        flow.udps.fwd_packets_rate       = fp / dur_s
+        flow.udps.bwd_packets_rate       = bp / dur_s
+        flow.udps.bwd_bytes_rate      = bb / dur_s
+        flow.udps.down_up_rate        = bb / max(fb, 1)
+        
+        # Additional exact feature name aliases
+        flow.udps.bwd_avg_segment_size = bb / max(bp, 1)
+        flow.udps.handshake_state = 0.0 # Placeholder
+        flow.udps.delta_start = 0.0     # Placeholder
+        
+        # Payload bytes delta len aliases (duplicate names in dataset)
+        flow.udps.mode_payload_bytes_delta_len = getattr(flow.udps, "payload_bytes_mode", 0.0)
+        flow.udps.skewness_payload_bytes_delta_len = getattr(flow.udps, "payload_bytes_skewness", 0.0)
+        flow.udps.skewness_fwd_payload_bytes_delta_len = getattr(flow.udps, "fwd_payload_bytes_skewness", 0.0)
+        flow.udps.skewness_bwd_payload_bytes_delta_len = getattr(flow.udps, "bwd_payload_bytes_skewness", 0.0)
 
-        flow.udps.down_up_ratio        = bb / max(fb, 1)
-        flow.udps.avg_pkt_size         = (fb + bb) / max(fp + bp, 1)
-        flow.udps.fwd_avg_pkt_size     = fb / max(fp, 1)
-        flow.udps.bwd_avg_pkt_size     = bb / max(bp, 1)
-        flow.udps.fwd_bwd_bytes_ratio  = fb / max(fb + bb, 1)
-        flow.udps.fwd_bwd_pkts_ratio   = fp / max(fp + bp, 1)
-
-        # bytes per packet (another angle on pkt size)
-        flow.udps.fwd_bytes_per_pkt    = fb / max(fp, 1)
-        flow.udps.bwd_bytes_per_pkt    = bb / max(bp, 1)
-
-        # act data pkts: fwd pkts with payload > 0
-        flow.udps.fwd_act_data_pkts    = float(fp)
-        flow.udps.bwd_act_data_pkts    = float(bp)
+        # Also map some final basic features
+        flow.udps.duration = dur_ms
+        flow.udps.packets_count = fp + bp
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -568,22 +583,27 @@ def capture(source: str, duration_seconds: int, output_csv: str):
     # Drop internal plugin state columns (prefixed with underscore after udps.)
     state_cols = [c for c in df.columns if "._" in c or c.endswith("_ts")]
     df = df.drop(columns=state_cols, errors="ignore")
+    
+    # ── Final Naming Alignment ──
+    # NFStream automatically prepends 'udps.' to all our plugin features.
+    # We must strip this prefix so the column names perfectly match the model's expected features.
+    df.columns = [c.replace("udps.", "") for c in df.columns]
 
     print(f"\n[+] Flows captured : {len(df)}")
     print(f"[+] Total columns  : {len(df.columns)}")
 
     # Print column count breakdown
     categories = {
-        "NFStream base":       [c for c in df.columns if not c.startswith("udps.")],
-        "Pkt length (plugin)": [c for c in df.columns if "pkt_len" in c],
-        "IAT (plugin)":        [c for c in df.columns if "_iat_" in c],
-        "TCP flags (plugin)":  [c for c in df.columns if any(f in c for f in ["fin","syn","rst","psh","ack","urg","cwr","ece"])],
+        "NFStream base":       [c for c in df.columns if c in ["id", "src_ip", "src_port", "dst_ip", "dst_port", "protocol"]],
+        "Pkt length (plugin)": [c for c in df.columns if "delta_len" in c or "payload_bytes" in c],
+        "IAT (plugin)":        [c for c in df.columns if "IAT" in c or "delta_time" in c],
+        "TCP flags (plugin)":  [c for c in df.columns if "flag" in c],
         "Bulk (plugin)":       [c for c in df.columns if "bulk" in c],
-        "Subflow (plugin)":    [c for c in df.columns if c.startswith("udps.sf_")],
+        "Subflow (plugin)":    [c for c in df.columns if "subflow" in c],
         "Active/Idle (plugin)":[c for c in df.columns if "active_" in c or "idle_" in c],
-        "Header (plugin)":     [c for c in df.columns if "header_len" in c],
+        "Header (plugin)":     [c for c in df.columns if "header_bytes" in c],
         "Window (plugin)":     [c for c in df.columns if "win" in c],
-        "Rate (plugin)":       [c for c in df.columns if any(x in c for x in ["per_s","ratio","avg_pkt"])],
+        "Rate (plugin)":       [c for c in df.columns if "rate" in c],
     }
     print("\n[+] Column breakdown:")
     for cat, cols in categories.items():

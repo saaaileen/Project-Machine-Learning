@@ -1,17 +1,12 @@
 import os
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import classification_report
 import joblib
-
-from .preprocessing import DATASET_PATH
 
 class RandomForestModel:
     def __init__(self):
         self.model = None
-        self.label_encoder = LabelEncoder()
 
-    def load_data(self, dataset_path=DATASET_PATH):
+    def load_data(self, dataset_path):
         if "parquet" in dataset_path:
             df = pd.read_parquet(dataset_path)
         else:
@@ -29,18 +24,15 @@ class RandomForestModel:
         if "activity" in df.columns:
             df = df.drop(columns=["activity"])
 
-        df["label"] = self.label_encoder.fit_transform(df["label"])
-
-        # Separate features and target variable
         X = df.drop(columns=["label"])
-        y = df["label"]
+        return X
 
-        return X, y
-
-    def test_model(self, dataset_path=DATASET_PATH):
+    def test_model(self, dataset_path, label_encoder_path):
         df = self.load_data(dataset_path)
-        X_test, y_test = self.preprocess_data(df)
+        X_test = self.preprocess_data(df)
+        le = joblib.load(label_encoder_path)
+        
 
         y_pred = self.model.predict(X_test)
-        print("Random Forest Model Classification Report:")
-        print(classification_report(y_test, y_pred))
+        y_pred = le.inverse_transform(y_pred)
+        return y_pred

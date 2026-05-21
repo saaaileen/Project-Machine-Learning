@@ -4,3 +4,5 @@ backend/core/__pycache__
 backend/core/dto/__pycache__
 backend/core/services/__pycache__
 .env
+.vscode
+dataset/__pycache__

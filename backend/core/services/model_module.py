@@ -1,9 +1,10 @@
 import os 
-from logistic_model import LogisticModel
-# from knn_model import KNNModel
-# from random_forest_model import RandomForestModel
-# from xgboost_model import XGBoostModel
-# from svm_model import SVMModel
+from .logistic_model import LogisticModel
+from .knn_model import KNNModel
+from .random_forest_model import RandomForestModel
+from .xgboost_model import XGBoostModel
+from .preprocessing import get_dataset_path, get_encoder_path
+from svm_model import SVMModel
 from pathlib import Path
 
 def get_list_of_models():
@@ -22,7 +23,14 @@ def get_list_of_models():
 def use_model(model_name="logisticRegression"):
 
     BASE_DIR = os.path.join(Path(__file__).resolve().parent, "../../../model/")
-    
+    dataset_path = get_dataset_path()
+    label_encoder_path = get_encoder_path() 
+
+    if not dataset_path:
+        raise FileNotFoundError(f"Dataset file not found, please generate it first")
+    if not label_encoder_path:
+        raise FileNotFoundError(f"Label encoder file not found, please generate it first")
+
     model = None
     if model_name == "logisticRegression":
         model = LogisticModel()
@@ -48,6 +56,4 @@ def use_model(model_name="logisticRegression"):
 
 
     model.load_model(model_path)
-    model.test_model()
-
-use_model("logisticRegression")
+    return model.test_model(dataset_path, label_encoder_path)

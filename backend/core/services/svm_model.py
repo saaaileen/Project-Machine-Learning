@@ -1,27 +1,14 @@
 import os
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.impute import SimpleImputer
-from sklearn.pipeline import Pipeline
-from sklearn.svm import LinearSVC
-from sklearn.metrics import (
-    classification_report,
-)
 import joblib
-
-from .preprocessing import DATASET_PATH 
 
 class SVMModel:
     def __init__(self):
         self.model = None
-        self.label_encoder = LabelEncoder()
         self.preprocess_data_info = None
 
-    def load_data(self, dataset_path=DATASET_PATH):
+    def load_data(self, dataset_path):
         if "parquet" in dataset_path:
             df = pd.read_parquet(dataset_path)
         else:
@@ -45,10 +32,7 @@ class SVMModel:
         if "activity" in df.columns:
             df = df.drop(columns=["activity"])
 
-        df["label"] = self.label_encoder.fit_transform(df["label"])
-
         X = df.drop(columns=["label"])
-        y = df["label"]
 
         if self.preprocess_data_info:
             zero_var_cols = self.preprocess_data_info["zero_var_cols"]
@@ -62,16 +46,14 @@ class SVMModel:
         X = df.drop(columns=cols_to_drop, errors="ignore")
         X = X.reindex(columns=feature_columns, fill_value=np.nan)
 
-        return X, y
+        return X
 
-    def test_model(self, dataset_path=DATASET_PATH):
+    def test_model(self, dataset_path, label_encoder_path):
         df = self.load_data(dataset_path)
-        X_test, y_test = self.preprocess_data(df)
-
-        if hasattr(self.model, "feature_names_in_"):
-            X_test = X_test[self.model.feature_names_in_]
+        X_test = self.preprocess_data(df)
+        le = joblib.load(label_encoder_path)
+        
 
         y_pred = self.model.predict(X_test)
-        print(f"Predicted labels: {y_pred}")
-        print(f"Actual labels: {y_test}")
-        print(classification_report(y_test, y_pred))
+        y_pred = le.inverse_transform(y_pred)
+        return y_pred
