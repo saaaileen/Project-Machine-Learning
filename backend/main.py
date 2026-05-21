@@ -5,6 +5,7 @@ from datetime import timedelta
 import bcrypt
 from fastapi import FastAPI, Response, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.middleware.cors import CORSMiddleware
 
 
 from core.services.model_module import get_list_of_models, use_model, get_dataset_rows
@@ -14,6 +15,14 @@ from config.config_module import hashed_password, create_access_token, ACCESS_TO
 from fastapi import Query
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5174", "http://127.0.0.1:5174"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login", auto_error=False)
 
@@ -119,7 +128,7 @@ def login(form_data: LoginRequest, response: Response):
             code=200,
             status="success",
             messages="Login successful",
-            data=None,
+            data={"access_token": token.access_token, "token_type": "bearer"},
             error_message=None
         )
     else:
