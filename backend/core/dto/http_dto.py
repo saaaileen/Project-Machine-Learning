@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Any
+from typing import Optional, Any, List
 
 class HttpResponse(BaseModel):
     code: int
@@ -11,4 +11,8 @@ class HttpResponse(BaseModel):
 
 class LoginRequest(BaseModel):
     password: str
- 
+
+
+class UseModelRequest(BaseModel):
+    model_name: str = "logisticRegression"
+    row_indices: Optional[List[int]] = None
