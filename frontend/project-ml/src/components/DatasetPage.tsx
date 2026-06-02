@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   getModels,
   getDatasetRows,
   useModel,
+  listDatasets,
+  switchDataset,
+  uploadDataset,
   type DatasetRowsData,
 } from "../api";
 import "./DatasetPage.css";
@@ -37,6 +40,12 @@ export default function DatasetPage({ token, onLogout }: Props) {
   const [models, setModels] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
 
+  /* ---- Dataset management ---- */
+  const [datasets, setDatasets] = useState<string[]>([]);
+  const [activeDataset, setActiveDataset] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   /* ---- Dataset browsing ---- */
   const [datasetInfo, setDatasetInfo] = useState<DatasetRowsData | null>(null);
   const [currentOffset, setCurrentOffset] = useState(0);
@@ -64,6 +73,23 @@ export default function DatasetPage({ token, onLogout }: Props) {
       .catch((e) => setError(e.message));
   }, [token]);
 
+  /* ---------- Fetch dataset list ---------- */
+  const fetchDatasets = useCallback(async () => {
+    try {
+      const res = await listDatasets(token);
+      if (res.data) {
+        setDatasets(res.data.datasets);
+        setActiveDataset(res.data.active);
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to list datasets");
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchDatasets();
+  }, [fetchDatasets]);
+
   /* ---------- Fetch dataset page ---------- */
   const fetchPage = useCallback(
     async (offset: number) => {
@@ -84,7 +110,41 @@ export default function DatasetPage({ token, onLogout }: Props) {
 
   useEffect(() => {
     fetchPage(0);
-  }, [fetchPage]);
+  }, [fetchPage, activeDataset]);
+
+  /* ---------- Dataset switching ---------- */
+  async function handleSwitchDataset(filename: string) {
+    setError(null);
+    try {
+      await switchDataset(token, filename);
+      setActiveDataset(filename);
+      setSelectedRows(new Set());
+      setResults(null);
+      setCurrentOffset(0);
+      // fetchPage will be triggered by activeDataset change in useEffect
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to switch dataset");
+    }
+  }
+
+  /* ---------- Dataset upload ---------- */
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      await uploadDataset(token, file);
+      await fetchDatasets();
+      // Auto-switch to the uploaded file
+      await handleSwitchDataset(file.name);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
 
   /* ---------- Selection helpers ---------- */
   function toggleRow(rowIndex: number) {
@@ -98,9 +158,7 @@ export default function DatasetPage({ token, onLogout }: Props) {
 
   function toggleAllOnPage() {
     if (!datasetInfo) return;
-    const pageIndices = datasetInfo.rows.map(
-      (r) => r.row_index as number
-    );
+    const pageIndices = datasetInfo.rows.map((r) => r.row_index as number);
     const allSelected = pageIndices.every((i) => selectedRows.has(i));
 
     setSelectedRows((prev) => {
@@ -171,10 +229,53 @@ export default function DatasetPage({ token, onLogout }: Props) {
       <div className="dataset-body">
         {error && <div className="error-banner">{error}</div>}
 
+        {/* ===== Dataset management ===== */}
+        <div className="section-card">
+          <div className="section-title">
+            <span className="icon">📁</span> Dataset
+          </div>
+
+          <div className="dataset-controls">
+            <div className="dataset-select-group">
+              <label htmlFor="dataset-select">Active dataset:</label>
+              <select
+                id="dataset-select"
+                className="model-select"
+                value={activeDataset}
+                onChange={(e) => handleSwitchDataset(e.target.value)}
+              >
+                {datasets.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="upload-group">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                id="dataset-upload"
+                className="file-input-hidden"
+                onChange={handleUpload}
+              />
+              <button
+                className="upload-btn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? "Uploading…" : "📤 Upload CSV"}
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* ===== Dataset browsing ===== */}
         <div className="section-card">
           <div className="section-title">
-            <span className="icon"></span> Browse Dataset Rows
+            <span className="icon">📊</span> Browse Dataset Rows
           </div>
 
           {loading ? (
@@ -272,7 +373,7 @@ export default function DatasetPage({ token, onLogout }: Props) {
         {/* ===== Action bar ===== */}
         <div className="section-card">
           <div className="section-title">
-            <span className="icon"></span> Run Prediction
+            <span className="icon">🤖</span> Run Prediction
           </div>
 
           <div className="action-bar">
@@ -307,7 +408,7 @@ export default function DatasetPage({ token, onLogout }: Props) {
         {results && results.length > 0 && (
           <div className="section-card">
             <div className="section-title">
-              <span className="icon"></span> Prediction Results
+              <span className="icon">📋</span> Prediction Results
             </div>
 
             <div className="table-scroll">

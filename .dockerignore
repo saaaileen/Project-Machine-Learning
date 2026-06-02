@@ -1,0 +1,13 @@
+.git
+.gitignore
+.vscode
+__pycache__
+*.pyc
+node_modules
+frontend/project-ml/node_modules
+frontend/project-ml/dist
+*.egg-info
+*.md
+ml_network
+model/*.ipynb
+model/*.png

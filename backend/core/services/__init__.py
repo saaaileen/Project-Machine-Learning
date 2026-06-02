@@ -4,4 +4,11 @@ from .knn_model import KNNModel
 from .random_forest_model import RandomForestModel
 from .xgboost_model import XGBoostModel
 from .model_module import get_list_of_models, use_model, get_dataset_rows
-from .preprocessing import DATASET_PATH, current_dir
+from .preprocessing import (
+    DATASET_PATH,
+    current_dir,
+    get_dataset_dir,
+    list_datasets,
+    get_active_dataset,
+    set_active_dataset,
+)

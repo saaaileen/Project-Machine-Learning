@@ -1,4 +1,5 @@
-const API_BASE = "http://127.0.0.1:8000";
+/** Same-origin: no host/port prefix needed when served by FastAPI. */
+const API_BASE = "";
 
 /** Generic wrapper for the backend HttpResponse shape. */
 export interface ApiResponse<T = unknown> {
@@ -36,6 +37,60 @@ export async function getModels(token: string): Promise<ApiResponse<string[]>> {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`Failed to fetch models (${res.status})`);
+  return res.json();
+}
+
+/** -------- Datasets -------- */
+
+export interface DatasetListData {
+  datasets: string[];
+  active: string;
+}
+
+export async function listDatasets(
+  token: string
+): Promise<ApiResponse<DatasetListData>> {
+  const res = await fetch(`${API_BASE}/api/dataset/list`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Failed to list datasets (${res.status})`);
+  return res.json();
+}
+
+export async function switchDataset(
+  token: string,
+  filename: string
+): Promise<ApiResponse<null>> {
+  const res = await fetch(`${API_BASE}/api/dataset/switch`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ filename }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw new Error(detail?.detail ?? `Switch failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function uploadDataset(
+  token: string,
+  file: File
+): Promise<ApiResponse<{ filename: string }>> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE}/api/dataset/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw new Error(detail?.detail ?? `Upload failed (${res.status})`);
+  }
   return res.json();
 }
 
