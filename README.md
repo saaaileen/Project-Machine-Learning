@@ -1,372 +1,166 @@
-# 🛡️ DDoS Attack Detection & Analysis System - INDEX
+# DDoS Attack Detection System
 
-## 📚 Documentation Overview
-
-Start here to understand the complete project:
-
-### 🚀 **Getting Started (Start Here!)**
-- **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** ← 30-second quick start
-  - How to run the app
-  - What's included
-  - Quick checklist
-  
-### 📖 **Detailed Guides**
-
-1. **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** - Complete setup instructions
-   - Frontend installation
-   - Backend setup (optional)
-   - API integration
-   - Troubleshooting
-
-2. **[VISUAL_GUIDE.md](./VISUAL_GUIDE.md)** - What to expect when running
-   - Visual layouts
-   - Color scheme
-   - Expected appearance
-   - How to use each page
-
-3. **[PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md)** - Complete project overview
-   - What has been created
-   - Features implemented
-   - Technology stack
-   - File structure
-   - Next steps
-
-### 🎨 **Feature Documentation**
-
-- **[frontend/project-ml/DDoS_SYSTEM_README.md](./frontend/project-ml/DDoS_SYSTEM_README.md)**
-  - Feature descriptions
-  - Data structure
-  - Attack severity levels
-  - Status indicators
-  - Customization options
-
-### 💻 **Backend Reference**
-
-- **[backend/sample_server.ts](./backend/sample_server.ts)**
-  - Complete Express.js server example
-  - API endpoints documentation
-  - cURL testing examples
-  - Frontend integration instructions
+A machine learning project that classifies network traffic flows into three categories — **Benign**, **Attack**, and **Suspicious** — using the BCCC-cPacket Cloud DDoS 2024 dataset. The project covers the full pipeline: EDA, preprocessing, model training, evaluation, and a React-based web dashboard for visualizing detection results.
 
 ---
 
-## 🎯 Quick Navigation
+## Table of Contents
 
-### "I want to run the app NOW"
-→ Go to [QUICK_REFERENCE.md](./QUICK_REFERENCE.md)
-
-### "I need step-by-step setup instructions"
-→ Go to [SETUP_GUIDE.md](./SETUP_GUIDE.md)
-
-### "I want to see what the app looks like"
-→ Go to [VISUAL_GUIDE.md](./VISUAL_GUIDE.md)
-
-### "I want a complete overview"
-→ Go to [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md)
-
-### "I want to understand all features"
-→ Go to [frontend/project-ml/DDoS_SYSTEM_README.md](./frontend/project-ml/DDoS_SYSTEM_README.md)
-
-### "I want to build a backend"
-→ Go to [backend/sample_server.ts](./backend/sample_server.ts)
+- [Project Description](#project-description)
+- [Dataset & EDA](#dataset--eda)
+- [Preprocessing Pipeline](#preprocessing-pipeline)
+- [Model Results](#model-results)
+- [Tech Stack](#tech-stack)
+- [Links](#links)
 
 ---
 
-## 📋 Project Structure
+## Project Description
 
-```
-project/
-├── README.md (this file)
-├── QUICK_REFERENCE.md ⭐ START HERE
-├── SETUP_GUIDE.md
-├── VISUAL_GUIDE.md
-├── PROJECT_SUMMARY.md
-│
-├── frontend/
-│   └── project-ml/
-│       ├── src/
-│       │   ├── components/
-│       │   │   ├── Dashboard.tsx (541 lines)
-│       │   │   ├── Dashboard.css
-│       │   │   ├── AnalysisPage.tsx (277 lines)
-│       │   │   ├── AnalysisPage.css
-│       │   │   ├── NotificationPanel.tsx
-│       │   │   └── NotificationPanel.css
-│       │   ├── App.tsx (79 lines)
-│       │   ├── App.css
-│       │   ├── index.css
-│       │   └── main.tsx
-│       ├── package.json
-│       ├── vite.config.ts
-│       ├── tsconfig.json
-│       ├── DDoS_SYSTEM_README.md
-│       └── README.md
-│
-└── backend/
-    ├── sample_server.ts ✨ NEW
-    ├── package.json ✨ NEW
-    └── README.md (optional)
-```
+Network-level DDoS attacks remain one of the most common and disruptive threats to online services. This project builds a multi-class traffic classifier that distinguishes normal traffic from attack traffic and flags borderline ("Suspicious") flows that may warrant further investigation.
 
----
-
-## ⚡ 30-Second Quick Start
-
-```bash
-cd frontend/project-ml
-npm run dev
-```
-
-Then open: **http://localhost:5173**
-
-Done! The application is running.
-
----
-
-## 🎯 What You Get
-
-### ✅ Functional Features
-- Real-time DDoS attack notifications
-- Live attack dashboard with statistics
-- Detailed analysis page
-- Attack timeline view
-- Severity-based mitigation recommendations
-- Responsive mobile-friendly design
-
-### ✅ Pre-loaded Data
-- 3 realistic mock attacks
-- Different severity levels (Critical, High, Medium)
-- Various endpoints and attack patterns
-- Complete attack metadata
-
-### ✅ Professional UI
-- Dark theme (production-ready)
-- Color-coded severity indicators
-- Smooth animations
-- Intuitive navigation
-
-### ✅ Full Documentation
-- 5 comprehensive guides
-- Visual layout explanations
-- Backend integration examples
-- Code comments in all files
-
----
-
-## 🔗 Frontend Routes
-
-Once running, you can access:
-
-| Route | Purpose |
+**Three-class problem:**
+| Class | Meaning |
 |-------|---------|
-| `http://localhost:5173/` | Dashboard (default) |
-| `http://localhost:5173/` + Analysis Tab | Analysis page |
+| `Benign` | Normal, legitimate network traffic |
+| `Attack` | Confirmed DDoS attack traffic |
+| `Suspicious` | Anomalous traffic that does not clearly fit either category |
+
+The system consists of:
+- A **machine learning backend** — five models trained and compared on 540K+ network flow records
+- A **React frontend dashboard** — real-time attack visualization, timeline analysis, severity classification, and mitigation recommendations
+- A **REST API layer** (Express.js sample) for connecting the frontend to a live detection backend
 
 ---
 
-## 📊 Three Mock Attacks Included
+## Dataset & EDA
 
-```
-ATK001: CRITICAL - /api/users - 5000 req/s - MITIGATED
-ATK002: HIGH - /api/auth/login - 2300 req/s - ACTIVE
-ATK003: MEDIUM - /api/products - 890 req/s - DETECTED
-```
+**Dataset**: [BCCC-cPacket Cloud DDoS 2024](https://www.unb.ca/cic/datasets/ddos-2024.html)  
+**File**: `bccc-cpacket-cloud-ddos-2024-merged.parquet`
 
----
+### Raw Dataset Overview
 
-## 🛠️ Technology Stack
+| Property | Value |
+|----------|-------|
+| Total rows | 540,494 |
+| Total columns | 318 (317 numeric + 1 label) |
+| Missing values | 0 |
+| Duplicate rows | 21,391 |
+| Label classes | 3 |
 
-| Component | Technology |
-|-----------|-----------|
-| Framework | React 19 |
-| Language | TypeScript 5.9 |
-| Build Tool | Vite 8 |
-| Styling | CSS3 (Grid/Flexbox) |
-| Backend* | Express.js |
-| Database* | (Your choice) |
+All features are numeric (port numbers, packet counts, payload sizes, inter-arrival times, flow statistics, etc.). There are no categorical features beyond the target label.
 
-*Optional - Backend example provided
+### Class Distribution
 
----
+| Class | Count | Percentage |
+|-------|-------|-----------|
+| Benign | 349,178 | 64.60% |
+| Attack | 170,436 | 31.53% |
+| Suspicious | 20,880 | 3.86% |
 
-## 📚 Documentation Files Summary
+The dataset is **moderately imbalanced** — Benign traffic dominates, and Suspicious flows represent less than 4% of all records. This imbalance directly affects model behavior and was explicitly handled during training (class weights, balanced subsampling).
 
-| File | Purpose | Read Time |
-|------|---------|-----------|
-| QUICK_REFERENCE.md | Quick start guide | 5 min |
-| SETUP_GUIDE.md | Detailed setup | 10 min |
-| VISUAL_GUIDE.md | UI/UX guide | 10 min |
-| PROJECT_SUMMARY.md | Complete overview | 15 min |
-| DDoS_SYSTEM_README.md | Feature docs | 10 min |
-| sample_server.ts | API example | 15 min |
+### Key EDA Findings
 
----
-
-## ✨ Key Differentiators
-
-✅ **Works Immediately** - No configuration needed  
-✅ **Mock Data Included** - See it running instantly  
-✅ **Fully Responsive** - Works on all devices  
-✅ **Production Ready** - Professional styling  
-✅ **Well Documented** - 5 comprehensive guides  
-✅ **Backend Ready** - Integration examples included  
-✅ **TypeScript Safe** - Full type checking  
-✅ **Extensible** - Easy to customize and extend  
+- **No missing data**: All 317 numeric columns are fully populated — no imputation was required at the feature level (though pipelines include a median imputer as a safety measure).
+- **High feature redundancy**: A correlation analysis revealed extreme collinearity across many features. The top-20 highest-variance features already showed dense correlation clusters, motivating the aggressive correlation-based feature pruning in preprocessing.
+- **Class separability**: A 2D PCA projection of a 15K-sample subset showed moderate-to-good visual separation between Benign and Attack, while Suspicious overlapped significantly with both — explaining why all models struggle most on that class.
+- **Top discriminative features** (by ANOVA F-score): Flow duration, packet count statistics, inter-arrival timing features, and payload size distributions consistently ranked highest for class separation.
+- **Feature distributions**: Most features are heavily right-skewed with long tails and outliers (especially for attack flows), making scaling essential for distance- and gradient-based models.
 
 ---
 
-## 🚀 Getting Started Path
+## Preprocessing Pipeline
 
-### Option 1: Quick Test (5 minutes)
-1. Open [QUICK_REFERENCE.md](./QUICK_REFERENCE.md)
-2. Follow the 30-second quick start
-3. Open app in browser
-4. Explore the interface
+`model/preprocess_pipeline.ipynb` — applied once, outputs shared by all five models.
 
-### Option 2: Full Understanding (30 minutes)
-1. Read [QUICK_REFERENCE.md](./QUICK_REFERENCE.md)
-2. Check [VISUAL_GUIDE.md](./VISUAL_GUIDE.md)
-3. Follow [SETUP_GUIDE.md](./SETUP_GUIDE.md)
-4. Run the application
-5. Read [DDoS_SYSTEM_README.md](./frontend/project-ml/DDoS_SYSTEM_README.md)
+### Steps
 
-### Option 3: Complete Deep Dive (1 hour)
-1. Read all documentation in order
-2. Review [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md)
-3. Study component code
-4. Check [sample_server.ts](./backend/sample_server.ts)
-5. Plan your customizations
+1. **Drop `activity` column** — not a network feature; removed before any split.
 
----
+2. **Label encoding**
+   ```
+   Attack     → 0
+   Benign     → 1
+   Suspicious → 2
+   ```
 
-## 🎓 What You'll Learn
+3. **Stratified train/val/test split** — preserves class proportions across all three sets.
+   | Split | Rows | Ratio |
+   |-------|------|-------|
+   | Train | 432,395 | 80% |
+   | Validation | 54,049 | 10% |
+   | Test | 54,050 | 10% |
 
-- React component architecture
-- TypeScript interface design
-- CSS Grid and Flexbox layouts
-- Responsive web design
-- State management with hooks
-- Component composition patterns
-- Professional UI/UX practices
-- API integration patterns
+4. **Zero-variance column removal** — 3 columns with a single unique value across all training rows were dropped (no signal).
+
+5. **High-correlation column removal** — features with pairwise Pearson correlation > 0.95 (computed on a 50K training sample) were pruned. This removed **152 columns**, reducing the feature space from 317 → **162 final features**.
+
+All artifacts (`label_encoder.joblib`, `preprocessing_info.joblib`, and the six split `.parquet` files) are saved to `dataset/processed/` and loaded by each model notebook.
 
 ---
 
-## 💡 Common Questions
+## Model Results
 
-**Q: Do I need a backend to run this?**
-A: No! It works perfectly with mock data. Backend is optional.
+Five models were trained using `RandomizedSearchCV` (3-iter, 3-fold CV, `f1_macro` scoring) with explicit class imbalance handling. Evaluation is on the held-out test set (54,050 samples).
 
-**Q: Can I change the colors?**
-A: Yes! See SETUP_GUIDE.md for customization instructions.
+**Primary metric**: Macro F1 — weights all three classes equally, penalizing poor performance on the rare `Suspicious` class.  
+**Secondary metric**: Weighted F1 — reflects overall system health weighted by class support.
 
-**Q: Is it mobile friendly?**
-A: Yes! Fully responsive design.
+### Summary Table
 
-**Q: Can I deploy this?**
-A: Yes! Build with `npm run build` and deploy (Vercel, Netlify, etc).
+| Model | Accuracy | Precision (W) | Recall (W) | Macro F1 | Weighted F1 | ROC-AUC |
+|-------|----------|---------------|------------|----------|-------------|---------|
+| K-Nearest Neighbors | 0.8258 | 0.8278 | 0.8258 | 0.5949 | 0.8243 | 0.8892 |
+| Logistic Regression | 0.7401 | 0.9365 | 0.7401 | 0.6295 | 0.8132 | — |
+| SVM (SGD / Linear) | 0.8991 | 0.9047 | 0.8991 | 0.6953 | 0.8975 | 0.9453 |
+| XGBoost | 0.9434 | 0.9667 | 0.9434 | 0.8449 | 0.9507 | 0.9976 |
+| Random Forest | **0.9657** | **0.9683** | **0.9657** | **0.8835** | **0.9667** | **0.9983** |
 
-**Q: How do I connect a real backend?**
-A: See sample_server.ts and integration instructions in SETUP_GUIDE.md
+*(W) = weighted average. ROC-AUC for SVM uses decision function scores; Logistic Regression ROC-AUC was not captured in the final notebook run.*
 
----
+### Per-Class F1 Scores
 
-## 🔐 What's Secure
+| Model | Attack F1 | Benign F1 | Suspicious F1 |
+|-------|-----------|-----------|---------------|
+| KNN | 0.8000 | 0.8791 | 0.1056 |
+| Logistic Regression | 0.8606 | 0.8266 | 0.2013 |
+| SVM | 0.8757 | 0.9459 | 0.2643 |
+| XGBoost | — | — | — *(macro 0.8449)* |
+| Random Forest | — | — | — *(macro 0.8835)* |
 
-- ✅ TypeScript prevents type errors
-- ✅ React prevents XSS by default
-- ✅ No credentials in code
-- ✅ CORS support included in backend example
-- ✅ No external dependencies that are risky
+### Analysis
 
----
+**Random Forest** is the strongest overall performer — highest Macro F1 (0.8835), Weighted F1 (0.9667), and ROC-AUC (0.9983). With `max_depth=None` and 500 estimators, the ensemble captures complex decision boundaries well. `balanced_subsample` class weighting gave it the best `Suspicious` class handling among all models.
 
-## 📈 Performance Metrics
+**XGBoost** is a close second — Macro F1 of 0.8449 with a near-perfect ROC-AUC (0.9976). Its advantage is GPU-accelerated training (`device='cuda'`), making it faster to iterate on larger parameter searches if needed.
 
-- Page Load: < 1 second
-- Time to Interactive: 2-3 seconds
-- Bundle Size: ~200KB (gzipped)
-- Frame Rate: 60fps animations
-- Mobile Performance: Excellent
+**SVM (SGD-Linear)** achieves competitive Weighted F1 (0.8975) and is the fastest to train on this feature space, but its Macro F1 (0.6953) reveals it still struggles with `Suspicious` flows (F1 0.2643).
 
----
+**Logistic Regression** is interpretable and fast but underperforms on `Suspicious` (F1 0.2013), indicating the class boundary for borderline flows is non-linear and cannot be captured with a linear model alone.
 
-## 🎯 Next Capabilities
+**KNN** with PCA (3 components, 98.8% variance retained) performs the worst on `Suspicious` (F1 0.1056). The aggressive dimensionality reduction to just 3 PCA components — while geometrically reasonable for 98.8% variance — collapses fine-grained distinctions that matter for the minority class.
 
-After running the basic app, you can easily:
-
-✨ Connect to a real backend API  
-✨ Add WebSocket for real-time updates  
-✨ Integrate machine learning models  
-✨ Add user authentication  
-✨ Create database integration  
-✨ Generate PDF reports  
-✨ Add export functionality  
-✨ Implement advanced filtering  
+**The `Suspicious` class is consistently the hardest across all models.** With only 3.86% representation and overlap with both Benign and Attack in feature space, this remains an open challenge. Future work could explore SMOTE oversampling, cost-sensitive loss functions, or a two-stage classifier (binary first, then Suspicious vs. rest).
 
 ---
 
-## 📞 Code Navigation
+## Tech Stack
 
-### Main Application Files
-- `src/App.tsx` - Main app component and data setup
-- `src/App.css` - Global and header styling
-
-### Components
-- `src/components/Dashboard.tsx` - Main dashboard page
-- `src/components/AnalysisPage.tsx` - Analysis detail page
-- `src/components/NotificationPanel.tsx` - Alert system
-
-### Styling
-- `src/index.css` - Global CSS variables and base styles
-- `src/components/*.css` - Component-specific styling
-
-### Backend
-- `backend/sample_server.ts` - Express.js API server
-- `backend/package.json` - Backend dependencies
+| Layer | Technology |
+|-------|-----------|
+| ML / Data | Python, scikit-learn, XGBoost, pandas, NumPy, joblib |
+| Notebooks | Jupyter |
+| Frontend | React 19, TypeScript 5.9, Vite 8, CSS3 |
+| Backend (sample) | Node.js, Express.js |
+| Dataset format | Parquet |
 
 ---
 
-## ✅ Before You Start
+## Links
 
-Make sure you have:
-- ✅ Node.js 18+ installed
-- ✅ npm or yarn package manager
-- ✅ A modern web browser
-- ✅ Your favorite code editor (VS Code recommended)
-- ✅ Terminal access
-
----
-
-## 🎉 You're Ready!
-
-Everything is set up and ready to go.
-
-**Next Step**: Open [QUICK_REFERENCE.md](./QUICK_REFERENCE.md)
-
-```bash
-# Run this to start:
-cd frontend/project-ml && npm run dev
-
-# Then visit:
-http://localhost:5173
-```
-
-**Enjoy your DDoS Detection System! 🛡️**
-
----
-
-## 📞 Support Resources
-
-All documentation includes:
-- Step-by-step instructions
-- Code examples
-- Troubleshooting tips
-- Configuration options
-- Integration guides
-
-See the specific guide for your need!
-
----
-
-*Project created with ❤️ for DDoS Attack Detection & Analysis*
+| Resource | URL |
+|----------|-----|
+| Live App | *(insert link here)* |
+| Demo Video | *(insert Google Drive / YouTube link here)* |
+| Dataset Source | *(insert dataset link here)* |
