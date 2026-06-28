@@ -158,6 +158,6 @@ Five models were trained using `RandomizedSearchCV` (3-iter, 3-fold CV, `f1_macr
 ---
 
 ## Links
-Live App   : https://huggingface.co/spaces/KenHoH/ML_Security
+Live App   : https://huggingface.co/spaces/KenHoH/ML_Security <br>
 Demo Video : https://drive.google.com/drive/folders/1iDnnv8V_erJpuA2zRys3Y8UTYXYzw1Ch?usp=sharing
 
