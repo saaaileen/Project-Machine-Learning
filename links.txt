@@ -1,0 +1,9 @@
+
+GitHub link: 
+https://github.com/saaaileen/Project-Machine-Learning
+
+demo and presentation video link: 
+https://drive.google.com/drive/folders/1iDnnv8V_erJpuA2zRys3Y8UTYXYzw1Ch
+
+application-link: 
+https://huggingface.co/spaces/KenHoH/ML_Security
